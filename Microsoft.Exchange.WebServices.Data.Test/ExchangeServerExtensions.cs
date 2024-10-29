@@ -10,6 +10,9 @@ public static class ExchangeServerExtensions
             
         // todo у нас не будет пароля пользователя
         service.Credentials = new WebCredentials(settings.Username, settings.Password);
+        
+        Console.WriteLine($"Connecting to {settings.EwsServiceUrl} using credentials: {settings.Username} / {settings.Password}");
+        
         return service;
     }
 
@@ -26,11 +29,11 @@ public static class ExchangeServerExtensions
     public static ItemId CreateAppointment(this ExchangeService service)
     {
         var appointment = new Appointment(service);
-        appointment.Subject = "Tennis lesson";
-        appointment.Body = "Focus on backhand this week.";
+        appointment.Subject = "Моё мероприятие";
+        appointment.Body = "Сделать то, потом сделать сё";
         appointment.Start = DateTime.UtcNow.AddDays(2);
         appointment.End = appointment.Start.AddHours(1);
-        appointment.Location = "Tennis club";
+        appointment.Location = "Дома";
         appointment.ReminderDueBy = DateTime.UtcNow;
             
         // SendInvitationsMode
