@@ -190,7 +190,8 @@ namespace Microsoft.Exchange.WebServices.Data
 
                     using (Stream responseStream = this.response.GetResponseStream())
                     {
-                        responseStream.ReadTimeout = 2 * this.heartbeatFrequencyMilliseconds;
+                        if (responseStream.CanTimeout)
+                            responseStream.ReadTimeout = 2 * this.heartbeatFrequencyMilliseconds;
                         tracingStream = new HangingTraceStream(responseStream, this.Service);
 
                         // EwsServiceMultiResponseXmlReader.Create causes a read.
