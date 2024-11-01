@@ -1824,6 +1824,7 @@ namespace Microsoft.Exchange.WebServices.Data
         }
 
         #endregion
+        
         #region Attachment operations
 
         /// <summary>

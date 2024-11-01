@@ -10,6 +10,8 @@ public static class ExchangeServerExtensions
             
         // todo у нас не будет пароля пользователя
         service.Credentials = new WebCredentials(settings.Username, settings.Password);
+
+        service.ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, "exuser1@airplan.local");
         
         Console.WriteLine($"Connecting to {settings.EwsServiceUrl} using credentials: {settings.Username} / {settings.Password}");
         
@@ -26,15 +28,18 @@ public static class ExchangeServerExtensions
         );
     }
         
-    public static ItemId CreateAppointment(this ExchangeService service)
+    public static ItemId CreateAppointment(this ExchangeService service, string subject)
     {
         var appointment = new Appointment(service);
-        appointment.Subject = "Моё мероприятие";
+        appointment.Subject = subject;
         appointment.Body = "Сделать то, потом сделать сё";
-        appointment.Start = DateTime.UtcNow.AddDays(2);
+        appointment.Start = DateTime.UtcNow;
         appointment.End = appointment.Start.AddHours(1);
         appointment.Location = "Дома";
         appointment.ReminderDueBy = DateTime.UtcNow;
+
+        appointment.RequiredAttendees.Add(new Attendee("exuser2@airplan.local"));
+        appointment.OptionalAttendees.Add(new Attendee("exuser3@airplan.local"));
             
         // SendInvitationsMode
         //   * SendToNone - No meeting invitation is sent

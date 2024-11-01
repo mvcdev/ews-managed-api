@@ -1,4 +1,6 @@
-﻿using System.Collections;
+﻿#define PULL
+
+using System.Collections;
 using System.Net;
 using Microsoft.Exchange.WebServices.Data;
 using Microsoft.Exchange.WebServices.Data.Test;
@@ -25,10 +27,91 @@ foreach (DictionaryEntry variable in variables)
 var service = ExchangeServerExtensions
     .Configure(applicationSettings ?? throw new InvalidOperationException());
 
+// Подписка на уведомления
+#if SUBSCRIPTION
+var calendar = CalendarFolder.Bind(service, WellKnownFolderName.Calendar, new PropertySet());
+var subscription = service.SubscribeToStreamingNotifications([calendar.Id],
+    EventType.Created,
+    EventType.Deleted,
+    EventType.Modified,
+    EventType.Moved,
+    EventType.Copied,
+    EventType.FreeBusyChanged
+);
+var connection = new StreamingSubscriptionConnection(service, 30);
+connection.AddSubscription(subscription);
+connection.OnNotificationEvent += (sender, args) => {
+    foreach (var @event in args.Events)
+    {
+        if (@event is not ItemEvent itemEvent) continue;
+        
+        var appointment = service.GetAppointment(itemEvent.ItemId, new PropertySet(
+            ItemSchema.Subject,
+            AppointmentSchema.Start,
+            AppointmentSchema.End)
+        );
+        Console.WriteLine($"Subject: {appointment.Subject}; Start: {appointment.Start}; End: {appointment.End}");
+    }
+};
+connection.OnDisconnect += (sender, args) => {
+};
+connection.Open();
+#endif
+// END OF: Подписка на уведомления
+
+
+#if PULL
+
+var appointmentsToDelete = service.GetAppointments(
+    new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1),
+    new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(1).AddDays(-1).AddTicks(-1),
+    int.MaxValue);
+service.DeleteAppointments(appointmentsToDelete.Select(a => a.Id).ToArray());
+
+_ = Task.Run(() =>
+{
+    var i = 1;
+    while (true)
+    {
+        service.CreateAppointment("Мероприятие " + i);
+        Console.WriteLine("Created appointment " + i);
+        i++;
+        Task.Delay(3000).Wait();
+    }
+});
+
+var pullSubscription = service.SubscribeToPullNotifications(
+    [WellKnownFolderName.Calendar], 1, null, EventType.Created, EventType.Deleted, EventType.Modified, EventType.Moved);
+while (true)
+{
+    Console.WriteLine(pullSubscription.Watermark);
+
+    var eventsResult = pullSubscription.GetEvents();
+    foreach (var @event in eventsResult.ItemEvents)
+    {
+        if (@event is not ItemEvent itemEvent) continue;
+
+        var a = service.GetAppointment(itemEvent.ItemId, new PropertySet(
+            ItemSchema.Subject,
+            AppointmentSchema.Start,
+            AppointmentSchema.End)
+        );
+        Console.WriteLine($"Received appointment: {a.Subject}");
+    }
+    
+    Task.Delay(3000).Wait();
+}
+
+pullSubscription.Unsubscribe();
+
+
+#endif
+
 // Создание мероприятия
-var appointmentId = service.CreateAppointment();
+var appointmentId = service.CreateAppointment("Моё мероприятие");
 
 Console.WriteLine("Created appointment");
+Console.ReadKey();
 Task.Delay(5000).Wait();
 
 // Получение мероприятия по Id
