@@ -34,6 +34,5 @@ public class DeleteAppointmentTests : TestFixtureBase
 
         var appointments = calendar.FindAppointments(calendarView).ToArray();
         appointments.Should().NotContain(a => a.Id.UniqueId == appointment.Id.UniqueId);
-        
     }
 }

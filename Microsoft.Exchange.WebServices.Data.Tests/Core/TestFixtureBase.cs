@@ -59,9 +59,39 @@ public class TestFixtureBase
             .BuildServiceProvider();
     }
 
+    private void DeleteExistingAppointments(string testUser)
+    {
+        var exchangeService = GetExchangeService(testUser);
+        
+        var calendar = CalendarFolder.Bind(exchangeService, WellKnownFolderName.Calendar, []);
+        var calendarView = new CalendarView(DateTime.Now.AddMonths(-1), DateTime.Now.AddMonths(+1), int.MaxValue)
+        {
+            PropertySet = new PropertySet(ItemSchema.Id)
+        };
+        var appointments = calendar.FindAppointments(calendarView).ToArray();
+
+        if (appointments.Length > 0)
+        {
+            exchangeService.DeleteItems(
+                appointments.Select(a => a.Id).ToArray(),
+                DeleteMode.HardDelete,
+                SendCancellationsMode.SendToNone,
+                AffectedTaskOccurrence.AllOccurrences
+            );
+        }
+    }
+
     [OneTimeTearDown]
     public void OneTimeTearDown()
     {
+        // Clean up data
+        DeleteExistingAppointments(TestUsers.User1);
+        DeleteExistingAppointments(TestUsers.User2);
+        DeleteExistingAppointments(TestUsers.User3);
+        DeleteExistingAppointments(TestUsers.User4);
+        DeleteExistingAppointments(TestUsers.User5);
+        
+        // Dispose resources
         ServiceProvider.Dispose();
     }
 }

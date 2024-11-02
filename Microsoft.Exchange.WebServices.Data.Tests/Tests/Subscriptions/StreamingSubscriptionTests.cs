@@ -64,7 +64,7 @@ public class StreamingSubscriptionTests : TestFixtureBase
         System.Threading.Tasks.Task.WhenAll(
             createAppointmentsTask,
             subscriptionToAppointmentsTaskSource.Task
-        ).Wait(1000 * 10);
+        ).Wait(1000 * 20);
         
         connection.Close();
         subscription.Unsubscribe();

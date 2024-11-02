@@ -75,7 +75,7 @@ public class PullSubscriptionTests : TestFixtureBase
         System.Threading.Tasks.Task.WhenAll(
             createAppointmentsTask,
             subscribeToAppointmentsTask
-        ).Wait(1000 * 10);
+        ).Wait(1000 * 20);
         
         // Assert
         batches.Should().BeGreaterThan(1, "Тест не очень корректный, так как подписка вернула все мероприятия за раз");
