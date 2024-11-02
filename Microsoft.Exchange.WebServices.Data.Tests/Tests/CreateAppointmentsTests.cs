@@ -38,4 +38,38 @@ public class CreateAppointmentsTests : TestFixtureBase
         appointment.End.Should().BeCloseTo(appointmentToCreate.End, TimeSpan.FromSeconds(1));
         appointment.Location.Should().Be(appointmentToCreate.Location);
     }
+    
+    [Test]
+    public void CreateAppointmentWithAttendees()
+    {
+        // Arrange
+        var exchangeService = GetExchangeService(TestUsers.User1);
+        var appointmentToCreate = new Appointment(exchangeService)
+        {
+            Subject = "Моё мероприятие",
+            Start = DateTime.Now,
+            End = DateTime.Now.AddHours(1),
+            RequiredAttendees = { TestUsers.User2 },
+            OptionalAttendees = { TestUsers.User3 },
+        };
+
+        // Act
+        appointmentToCreate.Save(SendInvitationsMode.SendToNone);
+        
+        // Assert
+        var appointment = (Appointment)Item.Bind(
+            exchangeService,
+            appointmentToCreate.Id,
+            new PropertySet(
+                AppointmentSchema.Organizer,
+                AppointmentSchema.OptionalAttendees,
+                AppointmentSchema.RequiredAttendees
+            )
+        );
+        
+        appointment.Organizer.Address.Should().Be(TestUsers.User1);
+        appointment.RequiredAttendees.Should().ContainSingle(a => a.Address == TestUsers.User2);
+        appointment.OptionalAttendees.Should().ContainSingle(a => a.Address == TestUsers.User3);
+        
+    }
 }

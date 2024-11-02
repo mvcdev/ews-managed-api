@@ -54,4 +54,82 @@ public class GetAppointmentsListTests : TestFixtureBase
         appointment2.End.Should().BeCloseTo(createdAppointment2.End, TimeSpan.FromSeconds(1));
         appointment2.Location.Should().Be(createdAppointment2.Location);
     }
+    
+    [Test]
+    public void GetAttendeesAppointments()
+    {
+        // Arrange
+        var exchangeService = GetExchangeService();
+        
+        var appointment = new Appointment(exchangeService)
+        {
+            Subject = Guid.NewGuid().ToString(),
+            Start = DateTime.Now,
+            End = DateTime.Now.AddHours(1),
+            RequiredAttendees = { TestUsers.User2 },
+            OptionalAttendees = { TestUsers.User3 },
+        };
+        appointment.Save(SendInvitationsMode.SendOnlyToAll);
+        
+        // Act
+        var organizerCalendar = CalendarFolder.Bind(GetExchangeService(TestUsers.User1), WellKnownFolderName.Calendar, []);
+        var requiredAttendeeCalendar = CalendarFolder.Bind(GetExchangeService(TestUsers.User2), WellKnownFolderName.Calendar, []);
+        var optionalAttendeeCalendar = CalendarFolder.Bind(GetExchangeService(TestUsers.User3), WellKnownFolderName.Calendar, []);
+
+        var calendarView = new CalendarView(DateTime.Now.Date, DateTime.Now.Date.AddDays(1), int.MaxValue)
+        {
+            PropertySet = new PropertySet(
+                ItemSchema.Subject,
+                AppointmentSchema.Organizer
+            )
+        };
+        
+        var organizerAppointments = organizerCalendar.FindAppointments(calendarView).ToArray();
+        var requiredAttendeeAppointments = requiredAttendeeCalendar.FindAppointments(calendarView).ToArray();
+        var optionalAttendeeAppointments = optionalAttendeeCalendar.FindAppointments(calendarView).ToArray();
+        
+        // Assert
+        var organizerAppointment = (Appointment)Item.Bind(
+            GetExchangeService(TestUsers.User1),
+            organizerAppointments.First(a => a.Subject == appointment.Subject).Id,
+            new PropertySet(
+                ItemSchema.Subject,
+                ItemSchema.ConversationId,
+                AppointmentSchema.ICalUid,
+                AppointmentSchema.Organizer
+            ));
+        organizerAppointment.Id.UniqueId.Should().Be(appointment.Id.UniqueId);
+        organizerAppointment.Subject.Should().Be(appointment.Subject);
+        organizerAppointment.Organizer.Name.Should().Be(TestUsers.User1.GetLogin());
+        
+        var requiredAttendeeAppointment = (Appointment)Item.Bind(
+            GetExchangeService(TestUsers.User2),
+            requiredAttendeeAppointments.First(a => a.Subject == appointment.Subject).Id,
+            new PropertySet(
+                ItemSchema.Subject,
+                ItemSchema.ConversationId,
+                AppointmentSchema.ICalUid,
+                AppointmentSchema.Organizer
+            ));
+        requiredAttendeeAppointment.Id.UniqueId.Should().NotBe(appointment.Id.UniqueId, 
+            "Мероприятия в календарях участников появляются с другим идентификатором");
+        requiredAttendeeAppointment.Subject.Should().Be(appointment.Subject);
+        requiredAttendeeAppointment.Organizer.Name.Should().Be(TestUsers.User1.GetLogin());
+        requiredAttendeeAppointment.ICalUid.Should().Be(organizerAppointment.ICalUid);
+        
+        var optionalAttendeeAppointment = (Appointment)Item.Bind(
+            GetExchangeService(TestUsers.User3),
+            optionalAttendeeAppointments.First(a => a.Subject == appointment.Subject).Id,
+            new PropertySet(
+                ItemSchema.Subject,
+                ItemSchema.ConversationId,
+                AppointmentSchema.ICalUid,
+                AppointmentSchema.Organizer
+            ));
+        optionalAttendeeAppointment.Id.UniqueId.Should().NotBe(appointment.Id.UniqueId, 
+            "Мероприятия в календарях участников появляются с другим идентификатором");
+        optionalAttendeeAppointment.Subject.Should().Be(appointment.Subject);
+        optionalAttendeeAppointment.Organizer.Name.Should().Be(TestUsers.User1.GetLogin());
+        optionalAttendeeAppointment.ICalUid.Should().Be(organizerAppointment.ICalUid);
+    }
 }
