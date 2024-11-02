@@ -1,6 +1,4 @@
-﻿#define PULL
-
-using System.Collections;
+﻿using System.Collections;
 using System.Net;
 using Microsoft.Exchange.WebServices.Data;
 using Microsoft.Exchange.WebServices.Data.Test;
@@ -17,6 +15,10 @@ var applicationSettings = new ConfigurationBuilder()
     .AddUserSecrets<ApplicationSettings>()
     .Build()
     .Get<ApplicationSettings>();
+if (applicationSettings == null)
+{
+    throw new ArgumentException("Application settings not found");
+}
 
 var variables = Environment.GetEnvironmentVariables();
 foreach (DictionaryEntry variable in variables)
@@ -25,87 +27,107 @@ foreach (DictionaryEntry variable in variables)
 }
 
 var service = ExchangeServerExtensions
-    .Configure(applicationSettings ?? throw new InvalidOperationException());
-
-// Подписка на уведомления
-#if SUBSCRIPTION
-var calendar = CalendarFolder.Bind(service, WellKnownFolderName.Calendar, new PropertySet());
-var subscription = service.SubscribeToStreamingNotifications([calendar.Id],
-    EventType.Created,
-    EventType.Deleted,
-    EventType.Modified,
-    EventType.Moved,
-    EventType.Copied,
-    EventType.FreeBusyChanged
-);
-var connection = new StreamingSubscriptionConnection(service, 30);
-connection.AddSubscription(subscription);
-connection.OnNotificationEvent += (sender, args) => {
-    foreach (var @event in args.Events)
-    {
-        if (@event is not ItemEvent itemEvent) continue;
-        
-        var appointment = service.GetAppointment(itemEvent.ItemId, new PropertySet(
-            ItemSchema.Subject,
-            AppointmentSchema.Start,
-            AppointmentSchema.End)
-        );
-        Console.WriteLine($"Subject: {appointment.Subject}; Start: {appointment.Start}; End: {appointment.End}");
-    }
-};
-connection.OnDisconnect += (sender, args) => {
-};
-connection.Open();
-#endif
-// END OF: Подписка на уведомления
-
-
-#if PULL
+    .Configure(applicationSettings);
 
 var appointmentsToDelete = service.GetAppointments(
     new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1),
     new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(1).AddDays(-1).AddTicks(-1),
     int.MaxValue);
-service.DeleteAppointments(appointmentsToDelete.Select(a => a.Id).ToArray());
 
-_ = Task.Run(() =>
+// Создание уведомлений в фоновом потоке
+if (false)
 {
-    var i = 1;
-    while (true)
+    service.DeleteAppointments(appointmentsToDelete.Select(a => a.Id).ToArray());
+
+    _ = Task.Run(() =>
     {
-        service.CreateAppointment("Мероприятие " + i);
-        Console.WriteLine("Created appointment " + i);
-        i++;
-        Task.Delay(3000).Wait();
-    }
-});
-
-var pullSubscription = service.SubscribeToPullNotifications(
-    [WellKnownFolderName.Calendar], 1, null, EventType.Created, EventType.Deleted, EventType.Modified, EventType.Moved);
-while (true)
-{
-    Console.WriteLine(pullSubscription.Watermark);
-
-    var eventsResult = pullSubscription.GetEvents();
-    foreach (var @event in eventsResult.ItemEvents)
-    {
-        if (@event is not ItemEvent itemEvent) continue;
-
-        var a = service.GetAppointment(itemEvent.ItemId, new PropertySet(
-            ItemSchema.Subject,
-            AppointmentSchema.Start,
-            AppointmentSchema.End)
-        );
-        Console.WriteLine($"Received appointment: {a.Subject}");
-    }
-    
-    Task.Delay(3000).Wait();
+        var i = 1;
+        while (true)
+        {
+            service.CreateAppointment("Мероприятие " + i);
+            Console.WriteLine("Created appointment " + i);
+            i++;
+            Task.Delay(3000).Wait();
+        }
+        // ReSharper disable once FunctionNeverReturns
+    });
 }
 
-pullSubscription.Unsubscribe();
+// Подписка на уведомления
+if (false)
+{
+    var calendar = CalendarFolder.Bind(service, WellKnownFolderName.Calendar, new PropertySet());
+    var subscription = service.SubscribeToStreamingNotifications([calendar.Id],
+        EventType.Created,
+        EventType.Deleted,
+        EventType.Modified,
+        EventType.Moved,
+        EventType.Copied,
+        EventType.FreeBusyChanged
+    );
+    var connection = new StreamingSubscriptionConnection(service, 30);
+    connection.AddSubscription(subscription);
+    connection.OnNotificationEvent += (sender, args) =>
+    {
+        foreach (var @event in args.Events)
+        {
+            if (@event is not ItemEvent itemEvent) continue;
+
+            var appointment = service.GetAppointment(itemEvent.ItemId, new PropertySet(
+                ItemSchema.Subject,
+                ItemSchema.LastModifiedTime,
+                AppointmentSchema.Start,
+                AppointmentSchema.End)
+            );
+            Console.WriteLine($"Subject: {appointment.Subject}; Start: {appointment.Start}; End: {appointment.End}");
+        }
+    };
+    connection.OnDisconnect += (sender, args) => { };
+    connection.Open();
+}
+// END OF: Подписка на уведомления
 
 
-#endif
+if (false)
+{
+    var pullSubscription = service.SubscribeToPullNotifications(
+        [WellKnownFolderName.Calendar], 1, null, EventType.Created, EventType.Deleted, EventType.Modified,
+        EventType.Moved);
+    while (true)
+    {
+        Console.WriteLine(pullSubscription.Watermark);
+
+        var eventsResult = pullSubscription.GetEvents();
+        foreach (var @event in eventsResult.ItemEvents)
+        {
+            if (@event is not ItemEvent itemEvent) continue;
+
+            var a = service.GetAppointment(itemEvent.ItemId, new PropertySet(
+                ItemSchema.Subject,
+                AppointmentSchema.Start,
+                AppointmentSchema.End)
+            );
+            Console.WriteLine($"Received appointment: {a.Subject}");
+        }
+
+        // Сделал public конструктор для PullSubscription,
+        // который позволяет передать параметры существующей подписки
+        // То есть SubscriptionId и Watermark можно хранить в БД
+        // Таумайт подписки до 24ч
+        // Но Exchange Client Services
+        pullSubscription = new PullSubscription(
+            service,
+            pullSubscription.Id,
+            pullSubscription.Watermark,
+            pullSubscription.MoreEventsAvailable
+        );
+
+        Task.Delay(3000).Wait();
+    }
+
+    pullSubscription.Unsubscribe();
+}
+
 
 // Создание мероприятия
 var appointmentId = service.CreateAppointment("Моё мероприятие");

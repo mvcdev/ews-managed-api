@@ -44,6 +44,22 @@ namespace Microsoft.Exchange.WebServices.Data
         }
 
         /// <summary>
+        /// Initializes a new instance of the <see cref="PullSubscription"/> class.
+        /// </summary>
+        /// <param name="service">The service.</param>
+        /// <param name="id"></param>
+        /// <param name="watermark"></param>
+        /// <param name="moreEventsAvailable"></param>
+        [Obsolete("Конструктор добавленный ради эксперимента, чтобы можно было создать подписку извне")]
+        public PullSubscription(ExchangeService service, string id, string watermark, bool? moreEventsAvailable)
+            : base(service)
+        {
+            this.Id = id;
+            this.Watermark = watermark;
+            this.moreEventsAvailable = moreEventsAvailable;
+        }
+
+        /// <summary>
         /// Obtains a collection of events that occurred on the subscribed folders since the point
         /// in time defined by the Watermark property. When GetEvents succeeds, Watermark is updated.
         /// </summary>
