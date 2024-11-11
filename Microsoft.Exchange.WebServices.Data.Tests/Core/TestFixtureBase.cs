@@ -8,14 +8,38 @@ public class TestFixtureBase
 {
     private ServiceProvider ServiceProvider { get; set; }
     
-    protected ExchangeService GetExchangeService(string? testUser = null)
+    protected ExchangeService GetExchangeServiceUsingImpersonation(string? testUser = null)
     {
         var settings = ServiceProvider.GetRequiredService<ApplicationSettings>();
         var service = new ExchangeService(GetWorkaroundTimeZone())
         {
             Url = new Uri(settings.EwsServiceUrl),
-            Credentials = new WebCredentials(settings.Username, settings.Password),
+            Credentials = new WebCredentials(settings.Impersonation.Username, settings.Impersonation.Password),
             ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, testUser ?? TestUsers.User1)
+        };
+        
+        return service;
+    }
+    
+    protected ExchangeService GetExchangeServiceUsingDirectAccess()
+    {
+        var settings = ServiceProvider.GetRequiredService<ApplicationSettings>();
+        var service = new ExchangeService(GetWorkaroundTimeZone())
+        {
+            Url = new Uri(settings.EwsServiceUrl),
+            Credentials = new WebCredentials(settings.DirectAccess.Username, settings.DirectAccess.Password),
+        };
+        
+        return service;
+    }
+    
+    protected ExchangeService GetExchangeServiceUsingDelegatingAccess()
+    {
+        var settings = ServiceProvider.GetRequiredService<ApplicationSettings>();
+        var service = new ExchangeService(GetWorkaroundTimeZone())
+        {
+            Url = new Uri(settings.EwsServiceUrl),
+            Credentials = new WebCredentials(settings.DelegatingAccess.Username, settings.DelegatingAccess.Password),
         };
         
         return service;
@@ -61,7 +85,7 @@ public class TestFixtureBase
 
     private void DeleteExistingAppointments(string testUser)
     {
-        var exchangeService = GetExchangeService(testUser);
+        var exchangeService = GetExchangeServiceUsingImpersonation(testUser);
         
         var calendar = CalendarFolder.Bind(exchangeService, WellKnownFolderName.Calendar, []);
         var calendarView = new CalendarView(DateTime.Now.AddMonths(-1), DateTime.Now.AddMonths(+1), int.MaxValue)

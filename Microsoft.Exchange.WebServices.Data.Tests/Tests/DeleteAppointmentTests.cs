@@ -6,7 +6,7 @@ public class DeleteAppointmentTests : TestFixtureBase
     public void DeleteAppointment()
     {
         // Arrange
-        var exchangeService = GetExchangeService();
+        var exchangeService = GetExchangeServiceUsingImpersonation();
         var appointment = new Appointment(exchangeService)
         {
             Subject = "Моё мероприятие",

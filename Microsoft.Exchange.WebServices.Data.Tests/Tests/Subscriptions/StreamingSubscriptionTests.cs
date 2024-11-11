@@ -12,7 +12,7 @@ public class StreamingSubscriptionTests : TestFixtureBase
         var subscribedAppointments = new List<Appointment>();
         var batches = 0;
         
-        var exchangeService = GetExchangeService();
+        var exchangeService = GetExchangeServiceUsingImpersonation();
         var calendar = CalendarFolder.Bind(exchangeService, WellKnownFolderName.Calendar, new PropertySet());
         var subscription = exchangeService.SubscribeToStreamingNotifications([calendar.Id], EventType.Created);
         var connection = new StreamingSubscriptionConnection(exchangeService, 30);
@@ -39,7 +39,7 @@ public class StreamingSubscriptionTests : TestFixtureBase
         var createdAppointments = new List<Appointment>();
         var createAppointmentsTask = System.Threading.Tasks.Task.Run(() =>
         {
-            var exchangeService = GetExchangeService();
+            var exchangeService = GetExchangeServiceUsingImpersonation();
             for (var i = 1; i <= 10; i++)
             {
                 System.Threading.Tasks.Task.Delay(500).Wait();

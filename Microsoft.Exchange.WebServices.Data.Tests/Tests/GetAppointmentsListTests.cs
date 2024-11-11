@@ -2,11 +2,14 @@ namespace Microsoft.Exchange.WebServices.Data.Tests.Tests;
 
 public class GetAppointmentsListTests : TestFixtureBase
 {
+    /// <summary>
+    /// Запрос списка мероприятий созданных одним пользователем
+    /// </summary>
     [Test]
     public void GetAppointmentsList()
     {
         // Arrange
-        var exchangeService = GetExchangeService();
+        var exchangeService = GetExchangeServiceUsingImpersonation();
         
         var createdAppointment1 = new Appointment(exchangeService)
         {
@@ -55,11 +58,16 @@ public class GetAppointmentsListTests : TestFixtureBase
         appointment2.Location.Should().Be(createdAppointment2.Location);
     }
     
+    /// <summary>
+    /// Создание мероприятия с несколькими участниками,
+    /// их получение через календари участников
+    /// и сопостовление по одинаковому ICalUid
+    /// </summary>
     [Test]
     public void GetAttendeesAppointments()
     {
         // Arrange
-        var exchangeService = GetExchangeService();
+        var exchangeService = GetExchangeServiceUsingImpersonation();
         
         var appointment = new Appointment(exchangeService)
         {
@@ -72,9 +80,9 @@ public class GetAppointmentsListTests : TestFixtureBase
         appointment.Save(SendInvitationsMode.SendOnlyToAll);
         
         // Act
-        var organizerCalendar = CalendarFolder.Bind(GetExchangeService(TestUsers.User1), WellKnownFolderName.Calendar, []);
-        var requiredAttendeeCalendar = CalendarFolder.Bind(GetExchangeService(TestUsers.User2), WellKnownFolderName.Calendar, []);
-        var optionalAttendeeCalendar = CalendarFolder.Bind(GetExchangeService(TestUsers.User3), WellKnownFolderName.Calendar, []);
+        var organizerCalendar = CalendarFolder.Bind(GetExchangeServiceUsingImpersonation(TestUsers.User1), WellKnownFolderName.Calendar, []);
+        var requiredAttendeeCalendar = CalendarFolder.Bind(GetExchangeServiceUsingImpersonation(TestUsers.User2), WellKnownFolderName.Calendar, []);
+        var optionalAttendeeCalendar = CalendarFolder.Bind(GetExchangeServiceUsingImpersonation(TestUsers.User3), WellKnownFolderName.Calendar, []);
 
         var calendarView = new CalendarView(DateTime.Now.Date, DateTime.Now.Date.AddDays(1), int.MaxValue)
         {
@@ -90,7 +98,7 @@ public class GetAppointmentsListTests : TestFixtureBase
         
         // Assert
         var organizerAppointment = (Appointment)Item.Bind(
-            GetExchangeService(TestUsers.User1),
+            GetExchangeServiceUsingImpersonation(TestUsers.User1),
             organizerAppointments.First(a => a.Subject == appointment.Subject).Id,
             new PropertySet(
                 ItemSchema.Subject,
@@ -103,7 +111,7 @@ public class GetAppointmentsListTests : TestFixtureBase
         organizerAppointment.Organizer.Name.Should().Be(TestUsers.User1.GetLogin());
         
         var requiredAttendeeAppointment = (Appointment)Item.Bind(
-            GetExchangeService(TestUsers.User2),
+            GetExchangeServiceUsingImpersonation(TestUsers.User2),
             requiredAttendeeAppointments.First(a => a.Subject == appointment.Subject).Id,
             new PropertySet(
                 ItemSchema.Subject,
@@ -118,7 +126,7 @@ public class GetAppointmentsListTests : TestFixtureBase
         requiredAttendeeAppointment.ICalUid.Should().Be(organizerAppointment.ICalUid);
         
         var optionalAttendeeAppointment = (Appointment)Item.Bind(
-            GetExchangeService(TestUsers.User3),
+            GetExchangeServiceUsingImpersonation(TestUsers.User3),
             optionalAttendeeAppointments.First(a => a.Subject == appointment.Subject).Id,
             new PropertySet(
                 ItemSchema.Subject,
@@ -131,5 +139,75 @@ public class GetAppointmentsListTests : TestFixtureBase
         optionalAttendeeAppointment.Subject.Should().Be(appointment.Subject);
         optionalAttendeeAppointment.Organizer.Name.Should().Be(TestUsers.User1.GetLogin());
         optionalAttendeeAppointment.ICalUid.Should().Be(organizerAppointment.ICalUid);
+    }
+    
+    /// <summary>
+    /// Добавление пользователя опциональным или обязательным участников в мероприятие
+    /// и отслеживание изменений в мероприятии в календаре этого участника
+    /// </summary>
+    [Test]
+    public void GetAppointmentsThroughSharedCalendar()
+    {
+        // Arrange
+        var user1Appointment = new Appointment(GetExchangeServiceUsingImpersonation(TestUsers.User1))
+        {
+            Subject = Guid.NewGuid().ToString(),
+            Start = DateTime.Now,
+            End = DateTime.Now.AddHours(1),
+            OptionalAttendees = { TestUsers.User5 }
+        };
+        user1Appointment.Save(SendInvitationsMode.SendOnlyToAll);
+        user1Appointment.Load(new PropertySet(ItemSchema.Subject, AppointmentSchema.Start, AppointmentSchema.End, AppointmentSchema.ICalUid));
+        
+        var user2Appointment = new Appointment(GetExchangeServiceUsingImpersonation(TestUsers.User1))
+        {
+            Subject = Guid.NewGuid().ToString(),
+            Start = DateTime.Now,
+            End = DateTime.Now.AddHours(1),
+            RequiredAttendees = { TestUsers.User5 },
+        };
+        user2Appointment.Save(SendInvitationsMode.SendOnlyToAll);
+        user2Appointment.Load(new PropertySet(ItemSchema.Subject, AppointmentSchema.Start, AppointmentSchema.End, AppointmentSchema.ICalUid));
+        
+        // todo Иногда мероприятия не успевают появиться в списке. Надо будет написать какую-то wait-обертку для получения списка
+        System.Threading.Tasks.Task.Delay(1000).Wait();
+        
+        // Act
+        var sharedCalendar = CalendarFolder.Bind(GetExchangeServiceUsingImpersonation(TestUsers.User5), WellKnownFolderName.Calendar, []);
+        var calendarView = new CalendarView(DateTime.Now.Date, DateTime.Now.Date.AddDays(1), int.MaxValue)
+        {
+            PropertySet = new PropertySet(
+                ItemSchema.Subject,
+                AppointmentSchema.Organizer
+            )
+        };
+        var appointments = sharedCalendar.FindAppointments(calendarView).ToArray();
+        
+        // Assert
+        var optionalAttendeeAppointment = (Appointment)Item.Bind(
+            GetExchangeServiceUsingImpersonation(TestUsers.User5),
+            appointments.First(a => a.Subject == user1Appointment.Subject).Id,
+            new PropertySet(
+                ItemSchema.Subject,
+                ItemSchema.ConversationId,
+                AppointmentSchema.ICalUid,
+                AppointmentSchema.Organizer
+            ));
+        optionalAttendeeAppointment.Subject.Should().Be(user1Appointment.Subject);
+        optionalAttendeeAppointment.Organizer.Name.Should().Be(TestUsers.User1.GetLogin());
+        optionalAttendeeAppointment.ICalUid.Should().Be(user1Appointment.ICalUid);
+        
+        var requiredAttendeeAppointment = (Appointment)Item.Bind(
+            GetExchangeServiceUsingImpersonation(TestUsers.User5),
+            appointments.First(a => a.Subject == user2Appointment.Subject).Id,
+            new PropertySet(
+                ItemSchema.Subject,
+                ItemSchema.ConversationId,
+                AppointmentSchema.ICalUid,
+                AppointmentSchema.Organizer
+            ));
+        requiredAttendeeAppointment.Subject.Should().Be(user2Appointment.Subject);
+        requiredAttendeeAppointment.Organizer.Name.Should().Be(TestUsers.User1.GetLogin());
+        requiredAttendeeAppointment.ICalUid.Should().Be(user2Appointment.ICalUid);
     }
 }

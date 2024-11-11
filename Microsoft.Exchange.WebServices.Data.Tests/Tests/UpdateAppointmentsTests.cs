@@ -6,7 +6,7 @@ public class UpdateAppointmentsTests : TestFixtureBase
     public void UpdateAppointment()
     {
         // Arrange
-        var exchangeService = GetExchangeService();
+        var exchangeService = GetExchangeServiceUsingImpersonation();
         var createdAppointment = new Appointment(exchangeService)
         {
             Subject = "Моё мероприятие",

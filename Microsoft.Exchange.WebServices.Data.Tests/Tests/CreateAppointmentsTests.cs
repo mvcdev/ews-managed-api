@@ -6,7 +6,7 @@ public class CreateAppointmentsTests : TestFixtureBase
     public void CreateAppointment()
     {
         // Arrange
-        var exchangeService = GetExchangeService();
+        var exchangeService = GetExchangeServiceUsingImpersonation();
         var appointmentToCreate = new Appointment(exchangeService)
         {
             Subject = "Моё мероприятие",
@@ -43,7 +43,7 @@ public class CreateAppointmentsTests : TestFixtureBase
     public void CreateAppointmentWithAttendees()
     {
         // Arrange
-        var exchangeService = GetExchangeService(TestUsers.User1);
+        var exchangeService = GetExchangeServiceUsingImpersonation(TestUsers.User1);
         var appointmentToCreate = new Appointment(exchangeService)
         {
             Subject = "Моё мероприятие",

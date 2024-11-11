@@ -1,12 +1,12 @@
-namespace Microsoft.Exchange.WebServices.Data.Tests.Tests;
+﻿namespace Microsoft.Exchange.WebServices.Data.Tests.Tests;
 
-public class GetAppointmentTests : TestFixtureBase
+public class DirectAccessTests : TestFixtureBase
 {
     [Test]
-    public void GetAppointment()
+    public void CreateAppointment()
     {
         // Arrange
-        var exchangeService = GetExchangeServiceUsingImpersonation();
+        var exchangeService = GetExchangeServiceUsingDirectAccess();
         var appointmentToCreate = new Appointment(exchangeService)
         {
             Subject = "Моё мероприятие",
@@ -37,5 +37,30 @@ public class GetAppointmentTests : TestFixtureBase
         appointment.Start.Should().BeCloseTo(appointmentToCreate.Start, TimeSpan.FromSeconds(1));
         appointment.End.Should().BeCloseTo(appointmentToCreate.End, TimeSpan.FromSeconds(1));
         appointment.Location.Should().Be(appointmentToCreate.Location);
+    }
+    
+    [Test]
+    public void GetAppointmentsList()
+    {
+        // Arrange
+        var exchangeService = GetExchangeServiceUsingDirectAccess();
+        
+        // Act
+        var calendar = CalendarFolder.Bind(exchangeService, WellKnownFolderName.Calendar, []);
+
+        var calendarView = new CalendarView(DateTime.Now.Date, DateTime.Now.Date.AddDays(1), int.MaxValue)
+        {
+            PropertySet = new PropertySet(
+                ItemSchema.Subject,
+                AppointmentSchema.Start,
+                AppointmentSchema.End,
+                AppointmentSchema.Location
+            )
+        };
+
+        var appointments = calendar.FindAppointments(calendarView).ToArray();
+        
+        // Assert
+        appointments.Should().NotBeNull();
     }
 }
