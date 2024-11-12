@@ -3,7 +3,7 @@ namespace Microsoft.Exchange.WebServices.Data.Tests.Tests.Subscriptions;
 public class PullSubscriptionTests : TestFixtureBase
 {
     [Test]
-    public void SubscribeToAppointments()
+    public void SubscribeToAppointments_Using_Impersonation()
     {
         // Arrange
         
@@ -92,7 +92,7 @@ public class PullSubscriptionTests : TestFixtureBase
         var createdAppointments = new List<Appointment>();
         var createAppointmentsTask = System.Threading.Tasks.Task.Run(() =>
         {
-            var exchangeService = GetExchangeServiceUsingImpersonation();
+            var exchangeService = GetExchangeServiceUsingImpersonation(TestUsers.User1);
             for (var i = 1; i <= 10; i++)
             {
                 System.Threading.Tasks.Task.Delay(500).Wait();
@@ -120,9 +120,11 @@ public class PullSubscriptionTests : TestFixtureBase
         // Затем подписываемся на уведомления
         var subscribeToAppointmentsTask = System.Threading.Tasks.Task.Run(() =>
         {
-            var exchangeService = GetExchangeServiceUsingImpersonation();
+            var exchangeService = GetExchangeServiceUsingDelegatingAccess();
+            var otherUserCalendar = new FolderId(WellKnownFolderName.Calendar, new Mailbox(TestUsers.User1));
+            
             var pullSubscription = exchangeService
-                .SubscribeToPullNotifications([WellKnownFolderName.Calendar], 1, null, EventType.Created);
+                .SubscribeToPullNotifications([otherUserCalendar], 1, null, EventType.Created);
             while (true)
             {
                 var eventsResult = pullSubscription.GetEvents();
