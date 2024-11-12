@@ -3,9 +3,75 @@
 public class DelegatingAccessTests : TestFixtureBase
 {
     [Test]
+    public void ShouldThrowIfNoAccess()
+    {
+        // Arrange
+        RevokeAccessToCalendar(Settings.User5, Settings.UserWithDelegationAccess);
+            
+        var exchangeService = GetExchangeServiceUsingDelegatingAccess();
+        
+        var otherUserCalendar = new FolderId(WellKnownFolderName.Calendar, new Mailbox(Settings.User5.Username));
+        
+        // Act
+        var getAppointments = () =>
+        {
+            var calendar = CalendarFolder.Bind(exchangeService, otherUserCalendar, []);
+            
+            var calendarView = new CalendarView(DateTime.Now.Date, DateTime.Now.Date.AddDays(1), int.MaxValue)
+            {
+                PropertySet = new PropertySet(
+                    ItemSchema.Subject,
+                    AppointmentSchema.Start,
+                    AppointmentSchema.End,
+                    AppointmentSchema.Location
+                )
+            };
+            
+            calendar.FindAppointments(calendarView);
+        };
+        
+        // Assert
+        getAppointments.Should().Throw<ServiceResponseException>();
+    }
+    
+    [Test]
+    public void ShouldNotThrowIfAccessGranted()
+    {
+        // Arrange
+        GrantAccessToCalendar(Settings.User5, Settings.UserWithDelegationAccess);
+        
+        var exchangeService = GetExchangeServiceUsingDelegatingAccess();
+        
+        // Act
+        var getAppointments = () =>
+        {
+            var otherUserCalendar = new FolderId(WellKnownFolderName.Calendar, new Mailbox(Settings.User5.Username));
+            
+            var calendar = CalendarFolder.Bind(exchangeService, otherUserCalendar, []);
+            
+            var calendarView = new CalendarView(DateTime.Now.Date, DateTime.Now.Date.AddDays(1), int.MaxValue)
+            {
+                PropertySet = new PropertySet(
+                    ItemSchema.Subject,
+                    AppointmentSchema.Start,
+                    AppointmentSchema.End,
+                    AppointmentSchema.Location
+                )
+            };
+            
+            calendar.FindAppointments(calendarView);
+        };
+        
+        // Assert
+        getAppointments.Should().NotThrow();
+    }
+    
+    [Test]
     public void CreateAppointment()
     {
         // Arrange
+        GrantAccessToCalendar(Settings.User5, Settings.UserWithDelegationAccess);
+        
         var exchangeService = GetExchangeServiceUsingDelegatingAccess();
         
         var appointmentToCreate = new Appointment(exchangeService)
@@ -17,7 +83,7 @@ public class DelegatingAccessTests : TestFixtureBase
             Location = "Дома"
         };
         
-        var otherUserCalendar = new FolderId(WellKnownFolderName.Calendar, new Mailbox(TestUsers.User1));
+        var otherUserCalendar = new FolderId(WellKnownFolderName.Calendar, new Mailbox(Settings.User5.Username));
         
         // Act
         appointmentToCreate.Save(otherUserCalendar, SendInvitationsMode.SendToNone);
@@ -36,7 +102,7 @@ public class DelegatingAccessTests : TestFixtureBase
             )
         );
         
-        appointment.Organizer.Address.Should().Be(TestUsers.User1);
+        appointment.Organizer.Address.Should().Be(Settings.User5.Username);
         appointment.Subject.Should().Be(appointmentToCreate.Subject);
         appointment.Body.Text.Should().Contain(appointmentToCreate.Body.Text);
         appointment.Start.Should().BeCloseTo(appointmentToCreate.Start, TimeSpan.FromSeconds(1));

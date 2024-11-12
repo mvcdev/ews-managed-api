@@ -12,7 +12,7 @@ public class StreamingSubscriptionTests : TestFixtureBase
         var subscribedAppointments = new List<Appointment>();
         var batches = 0;
         
-        var exchangeService = GetExchangeServiceUsingImpersonation();
+        var exchangeService = GetExchangeServiceUsingImpersonation(Settings.User1);
         var calendar = CalendarFolder.Bind(exchangeService, WellKnownFolderName.Calendar, new PropertySet());
         var subscription = exchangeService.SubscribeToStreamingNotifications([calendar.Id], EventType.Created);
         var connection = new StreamingSubscriptionConnection(exchangeService, 30);
@@ -39,7 +39,7 @@ public class StreamingSubscriptionTests : TestFixtureBase
         var createdAppointments = new List<Appointment>();
         var createAppointmentsTask = System.Threading.Tasks.Task.Run(() =>
         {
-            var exchangeService = GetExchangeServiceUsingImpersonation();
+            var exchangeService = GetExchangeServiceUsingImpersonation(Settings.User1);
             for (var i = 1; i <= 10; i++)
             {
                 System.Threading.Tasks.Task.Delay(500).Wait();
@@ -79,6 +79,7 @@ public class StreamingSubscriptionTests : TestFixtureBase
     public void SubscribeToAppointments_Using_DelegatingAccess()
     {
         // Arrange
+        GrantAccessToCalendar(Settings.User1, Settings.UserWithDelegationAccess);
         
         // Сначала создаем подписку
         var subscriptionToAppointmentsTaskSource = new TaskCompletionSource();
@@ -86,7 +87,7 @@ public class StreamingSubscriptionTests : TestFixtureBase
         var batches = 0;
         
         var exchangeService = GetExchangeServiceUsingDelegatingAccess();
-        var otherUserCalendar = new FolderId(WellKnownFolderName.Calendar, new Mailbox(TestUsers.User1));
+        var otherUserCalendar = new FolderId(WellKnownFolderName.Calendar, new Mailbox(Settings.User1.Username));
         var calendar = CalendarFolder.Bind(exchangeService, otherUserCalendar, new PropertySet());
         var subscription = exchangeService.SubscribeToStreamingNotifications([calendar.Id], EventType.Created);
         var connection = new StreamingSubscriptionConnection(exchangeService, 30);
@@ -113,7 +114,7 @@ public class StreamingSubscriptionTests : TestFixtureBase
         var createdAppointments = new List<Appointment>();
         var createAppointmentsTask = System.Threading.Tasks.Task.Run(() =>
         {
-            var exchangeService = GetExchangeServiceUsingImpersonation(TestUsers.User1);
+            var exchangeService = GetExchangeServiceUsingImpersonation(Settings.User1);
             for (var i = 1; i <= 10; i++)
             {
                 System.Threading.Tasks.Task.Delay(500).Wait();

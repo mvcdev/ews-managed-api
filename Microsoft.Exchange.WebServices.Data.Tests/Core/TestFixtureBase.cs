@@ -7,27 +7,29 @@ namespace Microsoft.Exchange.WebServices.Data.Tests.Core;
 public class TestFixtureBase
 {
     private ServiceProvider ServiceProvider { get; set; }
+    protected TestSettings Settings => ServiceProvider.GetRequiredService<TestSettings>();
     
-    protected ExchangeService GetExchangeServiceUsingImpersonation(string? testUser = null)
+    protected ExchangeService GetExchangeServiceUsingDirectAccess(UserCredentials userCredentials)
     {
-        var settings = ServiceProvider.GetRequiredService<ApplicationSettings>();
         var service = new ExchangeService(GetWorkaroundTimeZone())
         {
-            Url = new Uri(settings.EwsServiceUrl),
-            Credentials = new WebCredentials(settings.Impersonation.Username, settings.Impersonation.Password),
-            ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, testUser ?? TestUsers.User1)
+            Url = new Uri(Settings.EwsServiceUrl),
+            Credentials = new WebCredentials(userCredentials.Username, userCredentials.Password),
         };
         
         return service;
     }
     
-    protected ExchangeService GetExchangeServiceUsingDirectAccess()
+    protected ExchangeService GetExchangeServiceUsingImpersonation(UserCredentials userCredentials)
     {
-        var settings = ServiceProvider.GetRequiredService<ApplicationSettings>();
         var service = new ExchangeService(GetWorkaroundTimeZone())
         {
-            Url = new Uri(settings.EwsServiceUrl),
-            Credentials = new WebCredentials(settings.DirectAccess.Username, settings.DirectAccess.Password),
+            Url = new Uri(Settings.EwsServiceUrl),
+            Credentials = new WebCredentials(
+                Settings.UserWithImpersonationAccess.Username,
+                Settings.UserWithImpersonationAccess.Password
+            ),
+            ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, userCredentials.Username),
         };
         
         return service;
@@ -35,11 +37,13 @@ public class TestFixtureBase
     
     protected ExchangeService GetExchangeServiceUsingDelegatingAccess()
     {
-        var settings = ServiceProvider.GetRequiredService<ApplicationSettings>();
         var service = new ExchangeService(GetWorkaroundTimeZone())
         {
-            Url = new Uri(settings.EwsServiceUrl),
-            Credentials = new WebCredentials(settings.DelegatingAccess.Username, settings.DelegatingAccess.Password),
+            Url = new Uri(Settings.EwsServiceUrl),
+            Credentials = new WebCredentials(
+                Settings.UserWithDelegationAccess.Username,
+                Settings.UserWithDelegationAccess.Password
+            ),
         };
         
         return service;
@@ -62,9 +66,9 @@ public class TestFixtureBase
         var applicationSettings = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json")
             .AddEnvironmentVariables()
-            .AddUserSecrets<ApplicationSettings>()
+            .AddUserSecrets<TestSettings>()
             .Build()
-            .Get<ApplicationSettings>();
+            .Get<TestSettings>();
         if (applicationSettings == null)
         {
             throw new ArgumentException("Application settings not found");
@@ -83,9 +87,9 @@ public class TestFixtureBase
             .BuildServiceProvider();
     }
 
-    private void DeleteExistingAppointments(string testUser)
+    private void DeleteExistingAppointments(UserCredentials userCredentials)
     {
-        var exchangeService = GetExchangeServiceUsingImpersonation(testUser);
+        var exchangeService = GetExchangeServiceUsingImpersonation(userCredentials);
         
         var calendar = CalendarFolder.Bind(exchangeService, WellKnownFolderName.Calendar, []);
         var calendarView = new CalendarView(DateTime.Now.AddMonths(-1), DateTime.Now.AddMonths(+1), int.MaxValue)
@@ -105,15 +109,79 @@ public class TestFixtureBase
         }
     }
 
+    /// <summary>
+    /// Предоставляет доступ к календарю другому пользователю
+    /// </summary>
+    /// <param name="owner">Владелец календаря</param>
+    /// <param name="service">Порльзователь, которму нужно предоставить доступ</param>
+    protected void GrantAccessToCalendar(UserCredentials owner, UserCredentials service)
+    {
+        var exchangeService = GetExchangeServiceUsingDirectAccess(owner);
+        
+        var sentItemsFolder = Folder.Bind(
+            exchangeService,
+            WellKnownFolderName.Calendar,
+            new PropertySet(BasePropertySet.IdOnly, FolderSchema.Permissions)
+        );
+
+        var permissions = sentItemsFolder.Permissions
+            .FirstOrDefault(p => p.UserId.PrimarySmtpAddress == service.Username);
+        if (permissions != null)
+        {
+            permissions.PermissionLevel = FolderPermissionLevel.Editor;
+        }
+        else
+        {
+            sentItemsFolder.Permissions.Add(new FolderPermission(service.Username, FolderPermissionLevel.Editor));
+        }
+
+        sentItemsFolder.Update();
+    }
+    
+    /// <summary>
+    /// Забирает доступ к календарю у другого пользователя
+    /// </summary>
+    /// <param name="owner">Владелец календаря</param>
+    /// <param name="service">Порльзователь, у которого нужно забрать доступ</param>
+    protected void RevokeAccessToCalendar(UserCredentials owner, UserCredentials service)
+    {
+        var exchangeService = GetExchangeServiceUsingDirectAccess(owner);
+        
+        var sentItemsFolder = Folder.Bind(
+            exchangeService,
+            WellKnownFolderName.Calendar, 
+            new PropertySet(BasePropertySet.IdOnly, FolderSchema.Permissions)
+        );
+        
+        var permissions = sentItemsFolder.Permissions
+            .FirstOrDefault(p => p.UserId.PrimarySmtpAddress == service.Username);
+        if (permissions != null)
+        {
+            sentItemsFolder.Permissions.Remove(permissions);
+        }
+
+        sentItemsFolder.Update();
+    }
+
     [OneTimeTearDown]
     public void OneTimeTearDown()
     {
         // Clean up data
-        DeleteExistingAppointments(TestUsers.User1);
-        DeleteExistingAppointments(TestUsers.User2);
-        DeleteExistingAppointments(TestUsers.User3);
-        DeleteExistingAppointments(TestUsers.User4);
-        DeleteExistingAppointments(TestUsers.User5);
+        DeleteExistingAppointments(Settings.User1);
+        DeleteExistingAppointments(Settings.User2);
+        DeleteExistingAppointments(Settings.User3);
+        DeleteExistingAppointments(Settings.User4);
+        DeleteExistingAppointments(Settings.User5);
+        
+        // Reset permissions
+        RevokeAccessToCalendar(Settings.User1, Settings.UserWithDelegationAccess);
+        RevokeAccessToCalendar(Settings.User2, Settings.UserWithDelegationAccess);
+        RevokeAccessToCalendar(Settings.User3, Settings.UserWithDelegationAccess);
+        RevokeAccessToCalendar(Settings.User4, Settings.UserWithDelegationAccess);
+        RevokeAccessToCalendar(Settings.User5, Settings.UserWithDelegationAccess);
+
+        // Так как тесты интеграционные, иногда что-то за чем-то не поспевает
+        System.Threading.Tasks.Task.Delay(1000);
         
         // Dispose resources
         ServiceProvider.Dispose();

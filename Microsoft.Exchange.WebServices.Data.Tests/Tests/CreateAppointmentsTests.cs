@@ -6,7 +6,7 @@ public class CreateAppointmentsTests : TestFixtureBase
     public void CreateAppointment()
     {
         // Arrange
-        var exchangeService = GetExchangeServiceUsingImpersonation();
+        var exchangeService = GetExchangeServiceUsingImpersonation(Settings.User1);
         var appointmentToCreate = new Appointment(exchangeService)
         {
             Subject = "Моё мероприятие",
@@ -43,14 +43,14 @@ public class CreateAppointmentsTests : TestFixtureBase
     public void CreateAppointmentWithAttendees()
     {
         // Arrange
-        var exchangeService = GetExchangeServiceUsingImpersonation(TestUsers.User1);
+        var exchangeService = GetExchangeServiceUsingImpersonation(Settings.User1);
         var appointmentToCreate = new Appointment(exchangeService)
         {
             Subject = "Моё мероприятие",
             Start = DateTime.Now,
             End = DateTime.Now.AddHours(1),
-            RequiredAttendees = { TestUsers.User2 },
-            OptionalAttendees = { TestUsers.User3 },
+            RequiredAttendees = { Settings.User2.Username },
+            OptionalAttendees = { Settings.User3.Username },
         };
 
         // Act
@@ -67,9 +67,8 @@ public class CreateAppointmentsTests : TestFixtureBase
             )
         );
         
-        appointment.Organizer.Address.Should().Be(TestUsers.User1);
-        appointment.RequiredAttendees.Should().ContainSingle(a => a.Address == TestUsers.User2);
-        appointment.OptionalAttendees.Should().ContainSingle(a => a.Address == TestUsers.User3);
-        
+        appointment.Organizer.Address.Should().Be(Settings.User1.Username);
+        appointment.RequiredAttendees.Should().ContainSingle(a => a.Address == Settings.User2.Username);
+        appointment.OptionalAttendees.Should().ContainSingle(a => a.Address == Settings.User3.Username);
     }
 }

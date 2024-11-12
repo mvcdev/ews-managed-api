@@ -1,4 +1,4 @@
-﻿namespace Microsoft.Exchange.WebServices.Data.Tests.Tests;
+﻿namespace Microsoft.Exchange.WebServices.Data.Tests.Tests.Access;
 
 public class DirectAccessTests : TestFixtureBase
 {
@@ -6,7 +6,7 @@ public class DirectAccessTests : TestFixtureBase
     public void CreateAppointment()
     {
         // Arrange
-        var exchangeService = GetExchangeServiceUsingDirectAccess();
+        var exchangeService = GetExchangeServiceUsingDirectAccess(Settings.User5);
         var appointmentToCreate = new Appointment(exchangeService)
         {
             Subject = "Моё мероприятие",
@@ -43,7 +43,7 @@ public class DirectAccessTests : TestFixtureBase
     public void GetAppointmentsList()
     {
         // Arrange
-        var exchangeService = GetExchangeServiceUsingDirectAccess();
+        var exchangeService = GetExchangeServiceUsingDirectAccess(Settings.User5);
         
         // Act
         var calendar = CalendarFolder.Bind(exchangeService, WellKnownFolderName.Calendar, []);

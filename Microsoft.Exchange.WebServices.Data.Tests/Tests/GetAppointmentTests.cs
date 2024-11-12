@@ -6,7 +6,7 @@ public class GetAppointmentTests : TestFixtureBase
     public void GetAppointment()
     {
         // Arrange
-        var exchangeService = GetExchangeServiceUsingImpersonation();
+        var exchangeService = GetExchangeServiceUsingImpersonation(Settings.User1);
         var appointmentToCreate = new Appointment(exchangeService)
         {
             Subject = "Моё мероприятие",
