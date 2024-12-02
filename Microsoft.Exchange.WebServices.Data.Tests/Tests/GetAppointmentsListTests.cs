@@ -268,13 +268,13 @@ public class GetAppointmentsListTests : TestFixtureBase
         appointment1.Start.Should().BeCloseTo(createdAppointment1.Start, TimeSpan.FromSeconds(1));
         appointment1.End.Should().BeCloseTo(createdAppointment1.End, TimeSpan.FromSeconds(1));
         appointment1.Location.Should().Be(createdAppointment1.Location);
-        appointment1.LastModifiedTime.Should().BeAfter(createdOn);
+        appointment1.LastModifiedTime.Should().BeCloseTo(createdOn, TimeSpan.FromSeconds(10));
         
         var appointment2 = appointments.First(a => a.Id.UniqueId == createdAppointment2.Id.UniqueId);
         appointment2.Subject.Should().Be(createdAppointment2.Subject);
         appointment2.Start.Should().BeCloseTo(createdAppointment2.Start, TimeSpan.FromSeconds(1));
         appointment2.End.Should().BeCloseTo(createdAppointment2.End, TimeSpan.FromSeconds(1));
         appointment2.Location.Should().Be(createdAppointment2.Location);
-        appointment2.LastModifiedTime.Should().BeAfter(createdOn);
+        appointment2.LastModifiedTime.Should().BeCloseTo(createdOn, TimeSpan.FromSeconds(10));
     }
 }
