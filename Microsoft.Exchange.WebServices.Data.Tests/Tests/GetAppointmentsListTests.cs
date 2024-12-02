@@ -14,8 +14,8 @@ public class GetAppointmentsListTests : TestFixtureBase
         var createdAppointment1 = new Appointment(exchangeService)
         {
             Subject = "Мероприятие 1",
-            Start = DateTime.Now,
-            End = DateTime.Now.AddHours(1),
+            Start = DateTime.UtcNow,
+            End = DateTime.UtcNow.AddHours(1),
             Location = "Дома"
         };
         createdAppointment1.Save(SendInvitationsMode.SendToNone);
@@ -23,8 +23,8 @@ public class GetAppointmentsListTests : TestFixtureBase
         var createdAppointment2 = new Appointment(exchangeService)
         {
             Subject = "Мероприятие 2",
-            Start = DateTime.Now.AddHours(2),
-            End = DateTime.Now.AddHours(3),
+            Start = DateTime.UtcNow.AddHours(2),
+            End = DateTime.UtcNow.AddHours(3),
             Location = "Дома"
         };
         createdAppointment2.Save(SendInvitationsMode.SendToNone);
@@ -32,7 +32,7 @@ public class GetAppointmentsListTests : TestFixtureBase
         // Act
         var calendar = CalendarFolder.Bind(exchangeService, WellKnownFolderName.Calendar, []);
 
-        var calendarView = new CalendarView(DateTime.Now.Date, DateTime.Now.Date.AddDays(1), int.MaxValue)
+        var calendarView = new CalendarView(DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(1), int.MaxValue)
         {
             PropertySet = new PropertySet(
                 ItemSchema.Subject,
@@ -72,8 +72,8 @@ public class GetAppointmentsListTests : TestFixtureBase
         var appointment = new Appointment(exchangeService)
         {
             Subject = Guid.NewGuid().ToString(),
-            Start = DateTime.Now,
-            End = DateTime.Now.AddHours(1),
+            Start = DateTime.UtcNow,
+            End = DateTime.UtcNow.AddHours(1),
             RequiredAttendees = { Settings.User2.Username },
             OptionalAttendees = { Settings.User3.Username },
         };
@@ -86,7 +86,7 @@ public class GetAppointmentsListTests : TestFixtureBase
         var requiredAttendeeCalendar = CalendarFolder.Bind(GetExchangeServiceUsingImpersonation(Settings.User2), WellKnownFolderName.Calendar, []);
         var optionalAttendeeCalendar = CalendarFolder.Bind(GetExchangeServiceUsingImpersonation(Settings.User3), WellKnownFolderName.Calendar, []);
 
-        var calendarView = new CalendarView(DateTime.Now.Date, DateTime.Now.Date.AddDays(1), int.MaxValue)
+        var calendarView = new CalendarView(DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(1), int.MaxValue)
         {
             PropertySet = new PropertySet(
                 ItemSchema.Subject,
@@ -154,8 +154,8 @@ public class GetAppointmentsListTests : TestFixtureBase
         var user1Appointment = new Appointment(GetExchangeServiceUsingImpersonation(Settings.User1))
         {
             Subject = Guid.NewGuid().ToString(),
-            Start = DateTime.Now,
-            End = DateTime.Now.AddHours(1),
+            Start = DateTime.UtcNow,
+            End = DateTime.UtcNow.AddHours(1),
             OptionalAttendees = { Settings.User5.Username }
         };
         user1Appointment.Save(SendInvitationsMode.SendOnlyToAll);
@@ -164,8 +164,8 @@ public class GetAppointmentsListTests : TestFixtureBase
         var user2Appointment = new Appointment(GetExchangeServiceUsingImpersonation(Settings.User1))
         {
             Subject = Guid.NewGuid().ToString(),
-            Start = DateTime.Now,
-            End = DateTime.Now.AddHours(1),
+            Start = DateTime.UtcNow,
+            End = DateTime.UtcNow.AddHours(1),
             RequiredAttendees = { Settings.User5.Username },
         };
         user2Appointment.Save(SendInvitationsMode.SendOnlyToAll);
@@ -176,7 +176,7 @@ public class GetAppointmentsListTests : TestFixtureBase
         
         // Act
         var sharedCalendar = CalendarFolder.Bind(GetExchangeServiceUsingImpersonation(Settings.User5), WellKnownFolderName.Calendar, []);
-        var calendarView = new CalendarView(DateTime.Now.Date, DateTime.Now.Date.AddDays(1), int.MaxValue)
+        var calendarView = new CalendarView(DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(1), int.MaxValue)
         {
             PropertySet = new PropertySet(
                 ItemSchema.Subject,
@@ -211,5 +211,66 @@ public class GetAppointmentsListTests : TestFixtureBase
         requiredAttendeeAppointment.Subject.Should().Be(user2Appointment.Subject);
         requiredAttendeeAppointment.Organizer.Name.Should().Be(Settings.User1.Username.GetLogin());
         requiredAttendeeAppointment.ICalUid.Should().Be(user2Appointment.ICalUid);
+    }
+    
+    /// <summary>
+    /// Запрос списка мероприятий созданных одним пользователем
+    /// </summary>
+    [Test]
+    public void GetAppointmentsListWithLastModifiedTime()
+    {
+        // Arrange
+        var exchangeService = GetExchangeServiceUsingImpersonation(Settings.User1);
+
+        var createdOn = DateTime.UtcNow;
+        
+        var createdAppointment1 = new Appointment(exchangeService)
+        {
+            Subject = "Мероприятие 1",
+            Start = DateTime.UtcNow,
+            End = DateTime.UtcNow.AddHours(1),
+            Location = "Дома"
+        };
+        createdAppointment1.Save(SendInvitationsMode.SendToNone);
+        
+        var createdAppointment2 = new Appointment(exchangeService)
+        {
+            Subject = "Мероприятие 2",
+            Start = DateTime.UtcNow.AddHours(2),
+            End = DateTime.UtcNow.AddHours(3),
+            Location = "Дома"
+        };
+        createdAppointment2.Save(SendInvitationsMode.SendToNone);
+
+        // Act
+        var calendar = CalendarFolder.Bind(exchangeService, WellKnownFolderName.Calendar, []);
+
+        var calendarView = new CalendarView(DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(1), int.MaxValue)
+        {
+            PropertySet = new PropertySet(
+                ItemSchema.Subject,
+                ItemSchema.LastModifiedTime,
+                AppointmentSchema.Start,
+                AppointmentSchema.End,
+                AppointmentSchema.Location
+            )
+        };
+
+        var appointments = calendar.FindAppointments(calendarView).ToArray();
+        
+        // Assert
+        var appointment1 = appointments.First(a => a.Id.UniqueId == createdAppointment1.Id.UniqueId);
+        appointment1.Subject.Should().Be(createdAppointment1.Subject);
+        appointment1.Start.Should().BeCloseTo(createdAppointment1.Start, TimeSpan.FromSeconds(1));
+        appointment1.End.Should().BeCloseTo(createdAppointment1.End, TimeSpan.FromSeconds(1));
+        appointment1.Location.Should().Be(createdAppointment1.Location);
+        appointment1.LastModifiedTime.Should().BeAfter(createdOn);
+        
+        var appointment2 = appointments.First(a => a.Id.UniqueId == createdAppointment2.Id.UniqueId);
+        appointment2.Subject.Should().Be(createdAppointment2.Subject);
+        appointment2.Start.Should().BeCloseTo(createdAppointment2.Start, TimeSpan.FromSeconds(1));
+        appointment2.End.Should().BeCloseTo(createdAppointment2.End, TimeSpan.FromSeconds(1));
+        appointment2.Location.Should().Be(createdAppointment2.Location);
+        appointment2.LastModifiedTime.Should().BeAfter(createdOn);
     }
 }

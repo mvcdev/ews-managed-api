@@ -11,8 +11,8 @@ public class DeleteAppointmentTests : TestFixtureBase
         {
             Subject = "Моё мероприятие",
             Body = "Сделать то, потом сделать сё",
-            Start = DateTime.Now,
-            End = DateTime.Now.AddHours(1),
+            Start = DateTime.UtcNow,
+            End = DateTime.UtcNow.AddHours(1),
             Location = "Дома"
         };
         appointment.Save(SendInvitationsMode.SendToNone);
@@ -27,7 +27,7 @@ public class DeleteAppointmentTests : TestFixtureBase
 
         // Assert
         var calendar = CalendarFolder.Bind(exchangeService, WellKnownFolderName.Calendar, []);
-        var calendarView = new CalendarView(DateTime.Now.Date, DateTime.Now.Date.AddDays(1), int.MaxValue)
+        var calendarView = new CalendarView(DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(1), int.MaxValue)
         {
             PropertySet = new PropertySet(ItemSchema.Subject, AppointmentSchema.Start, AppointmentSchema.End)
         };

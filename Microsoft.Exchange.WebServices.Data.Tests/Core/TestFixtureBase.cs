@@ -51,6 +51,7 @@ public class TestFixtureBase
     
     private static TimeZoneInfo GetWorkaroundTimeZone()
     {
+        return TimeZoneInfo.Utc;
         // https://stackoverflow.com/questions/39467609/the-specified-time-zone-isnt-valid-using-ews-from-server
         return TimeZoneInfo.CreateCustomTimeZone(
             id: "Time zone to workaround a bug",
@@ -92,7 +93,7 @@ public class TestFixtureBase
         var exchangeService = GetExchangeServiceUsingImpersonation(userCredentials);
         
         var calendar = CalendarFolder.Bind(exchangeService, WellKnownFolderName.Calendar, []);
-        var calendarView = new CalendarView(DateTime.Now.AddMonths(-1), DateTime.Now.AddMonths(+1), int.MaxValue)
+        var calendarView = new CalendarView(DateTime.UtcNow.AddMonths(-1), DateTime.UtcNow.AddMonths(+1), int.MaxValue)
         {
             PropertySet = new PropertySet(ItemSchema.Id)
         };
@@ -118,13 +119,13 @@ public class TestFixtureBase
     {
         var exchangeService = GetExchangeServiceUsingDirectAccess(owner);
         
-        var sentItemsFolder = Folder.Bind(
+        var calendarFolder = Folder.Bind(
             exchangeService,
             WellKnownFolderName.Calendar,
             new PropertySet(BasePropertySet.IdOnly, FolderSchema.Permissions)
         );
 
-        var permissions = sentItemsFolder.Permissions
+        var permissions = calendarFolder.Permissions
             .FirstOrDefault(p => p.UserId.PrimarySmtpAddress == service.Username);
         if (permissions != null)
         {
@@ -132,10 +133,10 @@ public class TestFixtureBase
         }
         else
         {
-            sentItemsFolder.Permissions.Add(new FolderPermission(service.Username, FolderPermissionLevel.Editor));
+            calendarFolder.Permissions.Add(new FolderPermission(service.Username, FolderPermissionLevel.Editor));
         }
 
-        sentItemsFolder.Update();
+        calendarFolder.Update();
     }
     
     /// <summary>

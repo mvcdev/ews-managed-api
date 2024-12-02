@@ -17,7 +17,7 @@ public class DelegatingAccessTests : TestFixtureBase
         {
             var calendar = CalendarFolder.Bind(exchangeService, otherUserCalendar, []);
             
-            var calendarView = new CalendarView(DateTime.Now.Date, DateTime.Now.Date.AddDays(1), int.MaxValue)
+            var calendarView = new CalendarView(DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(1), int.MaxValue)
             {
                 PropertySet = new PropertySet(
                     ItemSchema.Subject,
@@ -49,7 +49,7 @@ public class DelegatingAccessTests : TestFixtureBase
             
             var calendar = CalendarFolder.Bind(exchangeService, otherUserCalendar, []);
             
-            var calendarView = new CalendarView(DateTime.Now.Date, DateTime.Now.Date.AddDays(1), int.MaxValue)
+            var calendarView = new CalendarView(DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(1), int.MaxValue)
             {
                 PropertySet = new PropertySet(
                     ItemSchema.Subject,
@@ -78,8 +78,8 @@ public class DelegatingAccessTests : TestFixtureBase
         {
             Subject = "Моё мероприятие",
             Body = "Сделать то, потом сделать сё",
-            Start = DateTime.Now,
-            End = DateTime.Now.AddHours(1),
+            Start = DateTime.UtcNow,
+            End = DateTime.UtcNow.AddHours(1),
             Location = "Дома"
         };
         
@@ -119,8 +119,8 @@ public class DelegatingAccessTests : TestFixtureBase
         var createdAppointment1 = new Appointment(exchangeServiceWithImpersonationAccess)
         {
             Subject = "Мероприятие 1",
-            Start = DateTime.Now,
-            End = DateTime.Now.AddHours(1),
+            Start = DateTime.UtcNow,
+            End = DateTime.UtcNow.AddHours(1),
             Location = "Дома"
         };
         createdAppointment1.Save(SendInvitationsMode.SendToNone);
@@ -128,8 +128,8 @@ public class DelegatingAccessTests : TestFixtureBase
         var createdAppointment2 = new Appointment(exchangeServiceWithImpersonationAccess)
         {
             Subject = "Мероприятие 2",
-            Start = DateTime.Now.AddHours(2),
-            End = DateTime.Now.AddHours(3),
+            Start = DateTime.UtcNow.AddHours(2),
+            End = DateTime.UtcNow.AddHours(3),
             Location = "Дома"
         };
         createdAppointment2.Save(SendInvitationsMode.SendToNone);
@@ -139,7 +139,7 @@ public class DelegatingAccessTests : TestFixtureBase
 
         var calendar = CalendarFolder.Bind(exchangeServiceWithDelegatingAccess, WellKnownFolderName.Calendar, []);
 
-        var calendarView = new CalendarView(DateTime.Now.Date, DateTime.Now.Date.AddDays(1), int.MaxValue)
+        var calendarView = new CalendarView(DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(1), int.MaxValue)
         {
             PropertySet = new PropertySet(
                 ItemSchema.Subject,

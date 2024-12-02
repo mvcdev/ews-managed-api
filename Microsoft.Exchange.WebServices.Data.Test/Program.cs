@@ -30,8 +30,8 @@ var service = ExchangeServerExtensions
     .Configure(applicationSettings);
 
 var appointmentsToDelete = service.GetAppointments(
-    new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1),
-    new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(1).AddDays(-1).AddTicks(-1),
+    new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1),
+    new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1).AddMonths(1).AddDays(-1).AddTicks(-1),
     int.MaxValue);
 
 // Создание уведомлений в фоновом потоке

@@ -11,8 +11,8 @@ public class GetAppointmentTests : TestFixtureBase
         {
             Subject = "Моё мероприятие",
             Body = "Сделать то, потом сделать сё",
-            Start = DateTime.Now,
-            End = DateTime.Now.AddHours(1),
+            Start = DateTime.UtcNow,
+            End = DateTime.UtcNow.AddHours(1),
             Location = "Дома"
         };
 

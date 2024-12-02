@@ -20,8 +20,8 @@ public class PullSubscriptionTests : TestFixtureBase
                 {
                     Subject = "Мероприятие " + i,
                     Body = "Сделать то, потом сделать сё",
-                    Start = DateTime.Now.AddHours(i),
-                    End = DateTime.Now.AddHours(i + 1),
+                    Start = DateTime.UtcNow.AddHours(i),
+                    End = DateTime.UtcNow.AddHours(i + 1),
                     Location = "Дома"
                 };
 
@@ -102,8 +102,8 @@ public class PullSubscriptionTests : TestFixtureBase
                 {
                     Subject = "Мероприятие " + i,
                     Body = "Сделать то, потом сделать сё",
-                    Start = DateTime.Now.AddHours(i),
-                    End = DateTime.Now.AddHours(i + 1),
+                    Start = DateTime.UtcNow.AddHours(i),
+                    End = DateTime.UtcNow.AddHours(i + 1),
                     Location = "Дома"
                 };
 

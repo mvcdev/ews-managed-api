@@ -11,8 +11,8 @@ public class CreateAppointmentsTests : TestFixtureBase
         {
             Subject = "Моё мероприятие",
             Body = "Сделать то, потом сделать сё",
-            Start = DateTime.Now,
-            End = DateTime.Now.AddHours(1),
+            Start = DateTime.UtcNow.ToUniversalTime(),
+            End = DateTime.UtcNow.AddHours(1).ToUniversalTime(),
             Location = "Дома"
         };
 
@@ -47,8 +47,8 @@ public class CreateAppointmentsTests : TestFixtureBase
         var appointmentToCreate = new Appointment(exchangeService)
         {
             Subject = "Моё мероприятие",
-            Start = DateTime.Now,
-            End = DateTime.Now.AddHours(1),
+            Start = DateTime.UtcNow,
+            End = DateTime.UtcNow.AddHours(1),
             RequiredAttendees = { Settings.User2.Username },
             OptionalAttendees = { Settings.User3.Username },
         };
