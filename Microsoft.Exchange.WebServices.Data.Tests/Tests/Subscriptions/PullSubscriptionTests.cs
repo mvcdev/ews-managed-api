@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Microsoft.Exchange.WebServices.Data.Tests.Tests.Subscriptions;
 
 public class PullSubscriptionTests : TestFixtureBase
@@ -255,5 +257,109 @@ public class PullSubscriptionTests : TestFixtureBase
         {
             createdAppointments.Select(a => a.Subject).Should().Contain(id => id == subscribedAppointment.Subject);
         }
+    }
+    
+    [Test]
+    public void SubscribeToAppointments_Using_DelegatedAccess_ThroughSharedEmail_CRUD()
+    {
+        // Arrange
+        var organizer = Settings.User1;
+        var sharedParticipant = Settings.User5;
+        
+        GrantAccessToCalendar(sharedParticipant, Settings.UserWithDelegationAccess);
+        
+        // Сначала начинаем создавать мероприятия
+        var createUpdateDeleteAppointmentsTask = System.Threading.Tasks.Task.Run(() =>
+        {
+            var exchangeService = GetExchangeServiceUsingImpersonation(organizer);
+        
+            // Создание
+            System.Threading.Tasks.Task.Delay(3000).Wait();
+            var appointment = new Appointment(exchangeService)
+            {
+                Subject = "Созданное мероприятие",
+                Body = "Сделать то, потом сделать сё",
+                Start = DateTime.UtcNow,
+                End = DateTime.UtcNow.AddHours(1),
+                Location = "Дома",
+                RequiredAttendees = { sharedParticipant.Username }
+            };
+            appointment.Save(SendInvitationsMode.SendOnlyToAll);
+            Debug.WriteLine("Мероприятие создано");
+            
+            // Редактирование
+            System.Threading.Tasks.Task.Delay(3000).Wait();
+            appointment.Subject = "Отредактированное мероприятие";
+            appointment.Update(ConflictResolutionMode.AlwaysOverwrite);
+            Debug.WriteLine("Мероприятие изменено");
+            
+            // Удаление
+            System.Threading.Tasks.Task.Delay(3000).Wait();
+            exchangeService.DeleteItems(
+                [appointment.Id],
+                DeleteMode.HardDelete,
+                SendCancellationsMode.SendToNone,
+                AffectedTaskOccurrence.AllOccurrences
+            );
+            Debug.WriteLine("Мероприятие удалено");
+        });
+        
+        // Потом создаем подписку
+        var events = new List<EventType>();
+        var batches = 0;
+       
+        // Затем подписываемся на уведомления
+        var subscribeToAppointmentsTask = System.Threading.Tasks.Task.Run(() =>
+        {
+            var exchangeService = GetExchangeServiceUsingDelegatingAccess();
+            var sharedCalendar = new FolderId(WellKnownFolderName.Calendar, sharedParticipant.Username);
+            
+            var pullSubscription = exchangeService
+                .SubscribeToPullNotifications([sharedCalendar], 1, null,
+                    EventType.Created, EventType.Modified, EventType.Deleted);
+            while (true)
+            {
+                var eventsResult = pullSubscription.GetEvents();
+                foreach (var evt in eventsResult.ItemEvents)
+                {
+                    events.Add(evt.EventType);
+                    Debug.WriteLine("Произошло событие " + evt.EventType);
+                }
+
+                // Сделал public конструктор для PullSubscription,
+                // который позволяет передать параметры существующей подписки
+                // То есть SubscriptionId и Watermark можно хранить в БД
+                // Таумайт подписки до 24ч
+                // Но Exchange Client Services
+                pullSubscription = new PullSubscription(
+                    exchangeService,
+                    pullSubscription.Id,
+                    pullSubscription.Watermark,
+                    pullSubscription.MoreEventsAvailable
+                );
+
+                batches++;
+
+                if (events.Count >= 3)
+                    break;
+            }
+            pullSubscription.Unsubscribe();
+        });
+        
+        // Act
+        System.Threading.Tasks.Task.WhenAll(
+            createUpdateDeleteAppointmentsTask,
+            subscribeToAppointmentsTask
+        ).Wait(1000 * 30);
+        
+        // Assert
+        batches.Should().BeGreaterThan(1, "Тест не очень корректный, так как подписка вернула все мероприятия за раз");
+        events.Should().ContainInOrder(
+            EventType.Created,
+            EventType.Modified,
+            // todo: Удаление пока выглядит как модификация, надо будет разобраться с этим
+            EventType.Modified
+        );
+        events.Count.Should().Be(3);
     }
 }
