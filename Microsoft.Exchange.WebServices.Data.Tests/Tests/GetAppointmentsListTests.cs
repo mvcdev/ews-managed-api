@@ -79,13 +79,9 @@ public class GetAppointmentsListTests : TestFixtureBase
         };
         appointment.Save(SendInvitationsMode.SendOnlyToAll);
 
-        System.Threading.Tasks.Task.Delay(1000);
+        System.Threading.Tasks.Task.Delay(1000).Wait();
         
         // Act
-        var organizerCalendar = CalendarFolder.Bind(GetExchangeServiceUsingImpersonation(Settings.User1), WellKnownFolderName.Calendar, []);
-        var requiredAttendeeCalendar = CalendarFolder.Bind(GetExchangeServiceUsingImpersonation(Settings.User2), WellKnownFolderName.Calendar, []);
-        var optionalAttendeeCalendar = CalendarFolder.Bind(GetExchangeServiceUsingImpersonation(Settings.User3), WellKnownFolderName.Calendar, []);
-
         var calendarView = new CalendarView(DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(1), int.MaxValue)
         {
             PropertySet = new PropertySet(
@@ -94,8 +90,13 @@ public class GetAppointmentsListTests : TestFixtureBase
             )
         };
         
+        var organizerCalendar = CalendarFolder.Bind(GetExchangeServiceUsingImpersonation(Settings.User1), WellKnownFolderName.Calendar, []);
         var organizerAppointments = organizerCalendar.FindAppointments(calendarView).ToArray();
+        
+        var requiredAttendeeCalendar = CalendarFolder.Bind(GetExchangeServiceUsingImpersonation(Settings.User2), WellKnownFolderName.Calendar, []);
         var requiredAttendeeAppointments = requiredAttendeeCalendar.FindAppointments(calendarView).ToArray();
+        
+        var optionalAttendeeCalendar = CalendarFolder.Bind(GetExchangeServiceUsingImpersonation(Settings.User3), WellKnownFolderName.Calendar, []);
         var optionalAttendeeAppointments = optionalAttendeeCalendar.FindAppointments(calendarView).ToArray();
         
         // Assert
@@ -240,6 +241,9 @@ public class GetAppointmentsListTests : TestFixtureBase
             End = DateTime.UtcNow.AddHours(3),
             Location = "Дома"
         };
+        
+        System.Threading.Tasks.Task.Delay(1000).Wait();
+        
         createdAppointment2.Save(SendInvitationsMode.SendToNone);
 
         // Act

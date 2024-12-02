@@ -182,7 +182,7 @@ public class TestFixtureBase
         RevokeAccessToCalendar(Settings.User5, Settings.UserWithDelegationAccess);
 
         // Так как тесты интеграционные, иногда что-то за чем-то не поспевает
-        System.Threading.Tasks.Task.Delay(1000);
+        System.Threading.Tasks.Task.Delay(1000).Wait();
         
         // Dispose resources
         ServiceProvider.Dispose();
