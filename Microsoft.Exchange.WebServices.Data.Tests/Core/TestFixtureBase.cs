@@ -115,7 +115,11 @@ public class TestFixtureBase
     /// </summary>
     /// <param name="owner">Владелец календаря</param>
     /// <param name="service">Порльзователь, которму нужно предоставить доступ</param>
-    protected void GrantAccessToCalendar(UserCredentials owner, UserCredentials service)
+    /// <param name="folderPermissionLevel">Права</param>
+    protected void GrantAccessToCalendar(
+        UserCredentials owner, 
+        UserCredentials service, 
+        FolderPermissionLevel folderPermissionLevel = FolderPermissionLevel.Editor)
     {
         var exchangeService = GetExchangeServiceUsingDirectAccess(owner);
         
@@ -129,11 +133,11 @@ public class TestFixtureBase
             .FirstOrDefault(p => p.UserId.PrimarySmtpAddress == service.Username);
         if (permissions != null)
         {
-            permissions.PermissionLevel = FolderPermissionLevel.Editor;
+            permissions.PermissionLevel = folderPermissionLevel;
         }
         else
         {
-            calendarFolder.Permissions.Add(new FolderPermission(service.Username, FolderPermissionLevel.Editor));
+            calendarFolder.Permissions.Add(new FolderPermission(service.Username, folderPermissionLevel));
         }
 
         calendarFolder.Update();
